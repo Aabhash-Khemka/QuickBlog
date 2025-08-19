@@ -30,17 +30,17 @@ export const addBlog = async (req, res) => {
       ],
     });
 
-  
-    await Blog.create({
+    const created = await Blog.create({
       title,
       subTitle,
       description,
       category,
       image: optimizedImageUrl,
       isPublished,
+      author: req.user._id,
     });
 
-    res.json({ success: true, message: "Blog Added Successfully" });
+    res.json({ success: true, message: "Blog Added Successfully", blogId: created._id });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -48,17 +48,26 @@ export const addBlog = async (req, res) => {
 
 export const getAllBlogs = async(req,res)=>{
     try {
-        const blogs = await Blog.find({isPublished:true})
+        const blogs = await Blog.find({isPublished:true}).populate('author','name')
         res.json({ success: true, blogs });
     } catch (error) {
         res.json({success:false,message:error.message})
     }
 }
 
+export const getMyBlogs = async (req,res) => {
+  try {
+    const blogs = await Blog.find({ author: req.user._id }).sort({createdAt:-1})
+    res.json({ success: true, blogs })
+  } catch (error) {
+    res.json({success:false,message:error.message})
+  }
+}
+
 export const getBlogId = async(req,res)=>{
     try {
         const {blogId} = req.params;
-        const blog = await Blog.findById(blogId)
+        const blog = await Blog.findById(blogId).populate('author','name email')
         if(!blog){
             return res.json({success:false , message:"Blog Not Found"})
         }
@@ -71,6 +80,13 @@ export const getBlogId = async(req,res)=>{
 export const deleteBlogById = async(req,res)=>{
     try {
         const {id} = req.body;
+       const blog = await Blog.findById(id)
+       if(!blog){
+         return res.json({success:false,message:'Blog not found'})
+       }
+       if(String(blog.author) !== String(req.user._id) && req.user.role !== 'admin'){
+         return res.json({success:false,message:'Not allowed'})
+       }
        await Blog.findByIdAndDelete(id);
 
 await Comment.deleteMany({blog:id});
@@ -86,6 +102,12 @@ export const togglePublish = async (req,res) => {
     try {
         const {id} = req.body;
         const blog = await Blog.findById(id);
+        if(!blog){
+          return res.json({success:false,message:'Blog not found'})
+        }
+        if(String(blog.author) !== String(req.user._id) && req.user.role !== 'admin'){
+          return res.json({success:false,message:'Not allowed'})
+        }
         blog.isPublished = !blog.isPublished;
         await blog.save();
         res.json({ success: true, message:"Blog Status Updated" });

@@ -10,6 +10,7 @@ const AppContext = createContext();
 export const AppProvider = ({children})=>{
 const navigate = useNavigate()
 const [token, setToken] = useState(null)
+const [user, setUser] = useState(null)
 const [blogs, setBlogs] = useState([])
 const [input, setInput] = useState("")
 
@@ -27,11 +28,16 @@ useEffect(() => {
   if(token){
     setToken(token);
     axios.defaults.headers.common['Authorization'] = `${token}`;
+    axios.get('/api/auth/me').then(({data})=>{
+      if(data.success){
+        setUser(data.user)
+      }
+    }).catch(()=>{})
   }
 }, [])
 
    const value = {
-    axios,navigate,token,setToken,blogs,setBlogs,input,setInput
+    axios,navigate,token,setToken,blogs,setBlogs,input,setInput,user,setUser
    }
    
     return (

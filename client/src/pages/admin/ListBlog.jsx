@@ -9,7 +9,7 @@ const ListBlog = () => {
   const [blogs, setBlogs] = useState([])
   const fetchBlogs = async () => {
     try {
-      const {data}  = await axios.get('/api/admin/blogs')
+      const {data}  = await axios.get('/api/blog/mine')
       if(data.success){
         setBlogs(data.blogs)
       }else{

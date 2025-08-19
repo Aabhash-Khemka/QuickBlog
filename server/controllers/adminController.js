@@ -1,23 +1,21 @@
 import jwt from 'jsonwebtoken'
 import Blog from '../models/Blog.js';
 import Comment from '../models/Comment.js';
+import User from '../models/User.js';
 
 
 export const  adminLogin = async(req,res)=>{
     try {
+        // Backward compatibility endpoint; delegate to user login if matches admin
         const {email,password} = req.body;
-        if(email !== process.env.ADMIN_EMAIL || password !== process.env.ADMIN_PASSWORD){
-            return res.json({success:false,message:"Invalid Credentials"})
-        }
-        const token = jwt.sign({email},process.env.JWT_SECRET)
-        res.json({success:true,token})
+        return res.redirect(307, '/api/auth/login')
     } catch (error) {
         res.json({success:false,message:error.message})
     }
 }
 export const getAllBlogsAdmin = async(req,res)=>{
     try {
-        const blogs = await Blog.find({}).sort({createdAt:-1});
+        const blogs = await Blog.find({}).sort({createdAt:-1}).populate('author','name email');
         res.json({success:true,blogs})
     } catch (error) {
         res.json({success:false,message:error.message})
@@ -33,13 +31,14 @@ export const getAllComments = async(req,res)=>{
 }
 export const getDashboard = async(req,res)=>{
     try {
-        const recentBlogs = await Blog.find({}).sort({createdAt:-1}).limit(5);
+        const recentBlogs = await Blog.find({}).sort({createdAt:-1}).limit(5).populate('author','name email');
         const blogs = await Blog.countDocuments();
         const comments = await Comment.countDocuments()
         const drafts = await Blog.countDocuments({isPublished:false})
+        const users = await User.countDocuments()
 
         const dashboardData = {
-            blogs, comments , drafts , recentBlogs
+            blogs, comments , drafts , users , recentBlogs
         }
         res.json({success:true,dashboardData})
     } catch (error) {
