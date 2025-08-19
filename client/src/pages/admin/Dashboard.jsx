@@ -12,7 +12,7 @@ const Dashboard = () => {
     drafts:0,
     recentBlogs:[]
   })
-  const {axios,user} = useAppContext()
+  const {axios,user,token} = useAppContext()
   const fetchDashboard = async ()=>{
     try {
       const {data} = await axios.get('/api/admin/dashboard')
@@ -22,12 +22,10 @@ const Dashboard = () => {
     }
   }
   useEffect(()=>{
-    if(user?.role === 'admin'){
-      fetchDashboard(dashboard_data)
-    } else {
-      // Non-admins see only their recent blogs via list view
+    if(token){
+      fetchDashboard()
     }
-  },[])
+  },[token])
   return (
     <div className='flex-1 p-4 md:p-10 bg-blue-50/50'>
       

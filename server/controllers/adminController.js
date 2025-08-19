@@ -31,16 +31,37 @@ export const getAllComments = async(req,res)=>{
 }
 export const getDashboard = async(req,res)=>{
     try {
-        const recentBlogs = await Blog.find({}).sort({createdAt:-1}).limit(5).populate('author','name email');
-        const blogs = await Blog.countDocuments();
-        const comments = await Comment.countDocuments()
-        const drafts = await Blog.countDocuments({isPublished:false})
-        const users = await User.countDocuments()
+        const isAdmin = req.user?.role === 'admin'
 
-        const dashboardData = {
-            blogs, comments , drafts , users , recentBlogs
+        if (isAdmin) {
+            const recentBlogs = await Blog.find({})
+              .sort({createdAt:-1})
+              .limit(5)
+              .populate('author','name email');
+            const blogs = await Blog.countDocuments();
+            const comments = await Comment.countDocuments();
+            const drafts = await Blog.countDocuments({isPublished:false});
+            const users = await User.countDocuments();
+
+            const dashboardData = { blogs, comments, drafts, users, recentBlogs };
+            return res.json({success:true,dashboardData});
+        } else {
+            const userId = req.user._id;
+            const recentBlogs = await Blog.find({author: userId})
+              .sort({createdAt:-1})
+              .limit(5)
+              .populate('author','name email');
+            const blogs = await Blog.countDocuments({author: userId});
+            const drafts = await Blog.countDocuments({author: userId, isPublished:false});
+            const authored = await Blog.find({author: userId}).select('_id');
+            const blogIds = authored.map(b => b._id);
+            const comments = blogIds.length
+              ? await Comment.countDocuments({ blog: { $in: blogIds } })
+              : 0;
+
+            const dashboardData = { blogs, comments, drafts, recentBlogs };
+            return res.json({success:true,dashboardData});
         }
-        res.json({success:true,dashboardData})
     } catch (error) {
         res.json({success:false,message:error.message})
     }

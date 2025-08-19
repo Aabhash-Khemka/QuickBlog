@@ -8,5 +8,5 @@ adminRouter.get("/comments",auth, requireAdmin , getAllComments)
 adminRouter.get("/blogs",auth, requireAdmin ,getAllBlogsAdmin)
 adminRouter.post("/delete-comment",auth, requireAdmin ,deleteCommentById)
 adminRouter.post("/approve-comment",auth, requireAdmin ,approveCommentById)
-adminRouter.get("/dashboard",auth, requireAdmin ,getDashboard)
+adminRouter.get("/dashboard",auth,getDashboard)
 export default adminRouter
