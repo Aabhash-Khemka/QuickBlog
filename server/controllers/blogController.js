@@ -36,11 +36,12 @@ export const addBlog = async (req, res) => {
       description,
       category,
       image: optimizedImageUrl,
-      isPublished,
+      isPublished: false, // Always start as unpublished until approved
+      isApproved: false, // New blogs need approval
       author: req.user._id,
     });
 
-    res.json({ success: true, message: "Blog Added Successfully", blogId: created._id });
+    res.json({ success: true, message: "Blog Submitted Successfully! It will be reviewed by admin before publishing.", blogId: created._id });
   } catch (error) {
     res.json({ success: false, message: error.message });
   }
@@ -48,7 +49,8 @@ export const addBlog = async (req, res) => {
 
 export const getAllBlogs = async(req,res)=>{
     try {
-        const blogs = await Blog.find({isPublished:true}).populate('author','name')
+        // Only show approved and published blogs to public
+        const blogs = await Blog.find({isPublished: true, isApproved: true}).populate('author','name')
         res.json({ success: true, blogs });
     } catch (error) {
         res.json({success:false,message:error.message})
@@ -64,12 +66,63 @@ export const getMyBlogs = async (req,res) => {
   }
 }
 
+// New function to get pending blogs for admin approval
+export const getPendingBlogs = async (req,res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.json({success: false, message: 'Admin access required'})
+    }
+    const blogs = await Blog.find({isApproved: false}).populate('author','name email').sort({createdAt:-1})
+    res.json({ success: true, blogs })
+  } catch (error) {
+    res.json({success:false,message:error.message})
+  }
+}
+
+// New function to approve/reject blogs
+export const approveBlog = async (req,res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.json({success: false, message: 'Admin access required'})
+    }
+    
+    const {blogId, action, rejectionReason} = req.body;
+    const blog = await Blog.findById(blogId);
+    
+    if (!blog) {
+      return res.json({success: false, message: 'Blog not found'})
+    }
+
+    if (action === 'approve') {
+      blog.isApproved = true;
+      blog.approvedBy = req.user._id;
+      blog.approvedAt = new Date();
+      blog.rejectionReason = undefined;
+      await blog.save();
+      res.json({ success: true, message: "Blog approved successfully!" });
+    } else if (action === 'reject') {
+      blog.isApproved = false;
+      blog.rejectionReason = rejectionReason || 'No reason provided';
+      await blog.save();
+      res.json({ success: true, message: "Blog rejected successfully!" });
+    } else {
+      res.json({ success: false, message: "Invalid action" });
+    }
+  } catch (error) {
+    res.json({success:false,message:error.message})
+  }
+}
+
 export const getBlogId = async(req,res)=>{
     try {
         const {blogId} = req.params;
         const blog = await Blog.findById(blogId).populate('author','name email')
         if(!blog){
             return res.json({success:false , message:"Blog Not Found"})
+        }
+        // Only show approved blogs to public
+        if (!blog.isApproved && (!req.user || String(blog.author) !== String(req.user._id))) {
+          return res.json({success:false, message:"Blog not available"})
         }
         res.json({ success: true, blog });
      } catch (error) {
@@ -107,6 +160,10 @@ export const togglePublish = async (req,res) => {
         }
         if(String(blog.author) !== String(req.user._id) && req.user.role !== 'admin'){
           return res.json({success:false,message:'Not allowed'})
+        }
+        // Only allow publishing if blog is approved
+        if (!blog.isApproved && req.user.role !== 'admin') {
+          return res.json({success:false,message:'Blog must be approved before publishing'})
         }
         blog.isPublished = !blog.isPublished;
         await blog.save();

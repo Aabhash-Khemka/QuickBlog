@@ -1,5 +1,5 @@
 import express from "express"
-import { addBlog, addComment, deleteBlogById, generateContent, getAllBlogs, getBlogComments, getBlogId, togglePublish, getMyBlogs } from "../controllers/blogController.js";
+import { addBlog, addComment, deleteBlogById, generateContent, getAllBlogs, getBlogComments, getBlogId, togglePublish, getMyBlogs, getPendingBlogs, approveBlog } from "../controllers/blogController.js";
 import upload from "../middleware/multer.js";
 import auth from "../middleware/auth.js";
 
@@ -8,6 +8,8 @@ const blogRouter = express.Router();
 blogRouter.post("/add",upload.single("image"),auth,addBlog)
 blogRouter.get('/all',getAllBlogs);
 blogRouter.get('/mine',auth,getMyBlogs);
+blogRouter.get('/pending',auth,getPendingBlogs); // New route for pending blogs
+blogRouter.post('/approve',auth,approveBlog); // New route for approving/rejecting blogs
 blogRouter.get('/:blogId',getBlogId);
 blogRouter.post('/delete',auth,deleteBlogById);
 blogRouter.post('/toggle-publish',auth,togglePublish);
